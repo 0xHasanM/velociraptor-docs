@@ -1,4 +1,5 @@
 name: Windows.Powershell.Timeline
+author: Mohammed Hasan, 0xHasanm
 description: |
    This artifact extracts commands executed from each user's ConsoleHost_History.txt and correlates the timestamps of Data_Added events in the USNJRNL with those commands to construct a timeline of PowerShell command execution.
 
@@ -8,6 +9,9 @@ type: CLIENT
 parameters:
    - name: user
      default: .
+
+references:
+  - https://www.linkedin.com/posts/0xhasanm_sundfirday-dfir-powershell-activity-7395908066409484288-eNSo
 
 sources:
   - precondition:
@@ -31,9 +35,13 @@ sources:
         WHERE Username =~ user
         ORDER BY LineNum DESC
       
-      LET USN_EVENTS_Indexed <= SELECT count() AS EventID, * FROM USN_EVENTS
+      LET USN_EVENTS_Indexed <= SELECT count() AS EventID,
+                                       *
+        FROM USN_EVENTS
       
-      LET PSReadline_Indexed <= SELECT count() AS CommandID, * FROM PSReadline
+      LET PSReadline_Indexed <= SELECT count() AS CommandID,
+                                       *
+        FROM PSReadline
       
       LET results_with_timestamp <= SELECT *
         FROM foreach(row={
@@ -42,7 +50,7 @@ sources:
         },
                      query={
           SELECT Timestamp,
-                 Line,
+                 Line AS Command,
                  Username
           FROM PSReadline_Indexed
           WHERE CommandID = EventID
@@ -57,7 +65,7 @@ sources:
         },
                      query={
           SELECT Timestamp,
-                 "N/A" AS Line,
+                 "N/A" AS Command,
                  username
           FROM USN_EVENTS_Indexed
           WHERE EventID > PSReadline_LineNumbers
@@ -72,7 +80,7 @@ sources:
         },
                      query={
           SELECT "N/A" AS Timestamp,
-                 Line,
+                 Line AS Command,
                  Username
           FROM PSReadline_Indexed
           WHERE CommandID > USN_EVENTS_EventNumbers
@@ -83,11 +91,11 @@ sources:
           SELECT *
           FROM results_with_timestamp
         },
-                b={
+                 b={
           SELECT *
           FROM usn_results_without_command
         },
-                c={
+                 c={
           SELECT *
           FROM psreadline_results_without_timestamp
         })
